@@ -8,7 +8,7 @@ PlaySwap follows a **microservices architecture** with asynchronous job processi
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                              CLIENT LAYER                                    │
+│                                 CLIENT                                     │
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
 │  │                     PlaySwap Frontend (Next.js)                      │   │
 │  │  • Server Components for initial data fetching                       │   │
@@ -20,7 +20,7 @@ PlaySwap follows a **microservices architecture** with asynchronous job processi
                                       │ HTTPS (port 8000)
                                       ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                              GATEWAY LAYER                                   │
+│                                  GATEWAY                                   │
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
 │  │                      API Gateway (KrakenD)                           │   │
 │  │  • Request routing to backend services                               │   │
@@ -49,7 +49,7 @@ PlaySwap follows a **microservices architecture** with asynchronous job processi
                                       │
                                       ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                              DATA LAYER                                      │
+│                                  DATA                                       │
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
 │  │                           Redis 7                                    │   │
 │  │  • Session storage (Spotify + YouTube tokens)                        │   │
@@ -61,7 +61,7 @@ PlaySwap follows a **microservices architecture** with asynchronous job processi
                                       │ Queue polling
                                       ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                            WORKER LAYER                                      │
+│                                WORKER                                       │
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
 │  │                    Conversion Worker (Go 1.24)                       │   │
 │  │  • Consumes jobs from Redis queue                                    │   │
@@ -203,7 +203,7 @@ src/main/java/
 
 **Repository**: [youtube-service](https://github.com/Marcelovmendes/youtube-service)
 
-**Stack**: Java 21, Spring Boot 3.4, Google API Client
+**Stack**: Java 25, Spring Boot 3.5, Google API Client
 
 **Architecture**: Similar layered structure with Result type for error handling
 
@@ -275,35 +275,6 @@ internal/
         ├── spotify_client.go      # Spotify API calls
         └── youtube_client.go      # YouTube API calls
 ```
-
-**Processing Pipeline**:
-```
-1. Poll Redis queue for new jobs
-         │
-         ▼
-2. Fetch Spotify session tokens from Redis
-         │
-         ▼
-3. Retrieve playlist tracks from Spotify API
-         │
-         ▼
-4. For each track (5 concurrent):
-   └── Search YouTube for matching video
-   └── Update progress in Redis
-         │
-         ▼
-5. Fetch YouTube session tokens from Redis
-         │
-         ▼
-6. Create YouTube playlist with matched videos
-         │
-         ▼
-7. Persist conversion history to PostgreSQL
-         │
-         ▼
-8. Update final status in Redis
-```
-
 ---
 
 ## Communication Patterns
@@ -312,10 +283,11 @@ internal/
 - Frontend → Gateway → Services
 - Services → External APIs (Spotify, YouTube)
 
-### Asynchronous (Redis Queue)
-- Spotify Service enqueues conversion jobs
-- Worker polls and processes jobs
-- Status updates via Redis pub/sub pattern
+### Asynchronous (Redis Queue - FIFO)
+- Spotify Service enqueues jobs via `LPUSH`
+- Worker consumes jobs via `BRPOP` (blocking pop)
+- First-In-First-Out processing order
+- Status updates stored as Redis keys
 
 ### Session Management
 ```
