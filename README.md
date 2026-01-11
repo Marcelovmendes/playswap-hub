@@ -95,6 +95,23 @@ cd playswap-front && npm run dev
 
 ---
 
+## API Limitations (Development Mode)
+
+This project runs on development API keys, which impose restrictions unrelated to the code itself:
+
+### YouTube Data API
+- **Daily quota**: ~10,000 units/day (each search costs 100 units)
+- **Practical limit**: ~90 track searches per day
+- **Test users**: Must be manually added in Google Cloud Console to authenticate
+
+### Spotify API
+- **User limit**: Maximum 25 users in development mode
+- **Production access**: Current policies require ~250k monthly active listeners on the platform, making it effectively impossible for independent developers
+
+These are platform restrictions, not application limitations.
+
+---
+
 ## License
 
 This project is for educational and portfolio purposes.
