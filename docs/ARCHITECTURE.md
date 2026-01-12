@@ -2,85 +2,11 @@
 
 This document describes the system architecture, service responsibilities, and communication patterns.
 
-## High-Level Overview
+##  Overview
 
 PlaySwap follows a **microservices architecture** with asynchronous job processing. Each service has a single responsibility and communicates through well-defined interfaces.
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                                 CLIENT                                     │
-│  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │                     PlaySwap Frontend (Next.js)                      │   │
-│  │  • Server Components for initial data fetching                       │   │
-│  │  • React Query for cache and real-time updates                       │   │
-│  │  • Zustand for client state management                               │   │
-│  └─────────────────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                      │
-                                      │ HTTPS (port 8000)
-                                      ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                                  GATEWAY                                   │
-│  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │                      API Gateway (KrakenD)                           │   │
-│  │  • Request routing to backend services                               │   │
-│  │  • CORS management with credentials                                  │   │
-│  │  • Cookie propagation between services                               │   │
-│  └─────────────────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                      │
-                    ┌─────────────────┴─────────────────┐
-                    │                                   │
-                    ▼                                   ▼
-┌───────────────────────────────────┐ ┌───────────────────────────────────┐
-│       SPOTIFY SERVICE             │ │       YOUTUBE SERVICE             │
-│       (Java 21 / Spring Boot)     │ │       (Java 21 / Spring Boot)     │
-│                                   │ │                                   │
-│  Responsibilities:                │ │  Responsibilities:                │
-│  • Spotify OAuth 2.0 + PKCE       │ │  • Google OAuth 2.0               │
-│  • User playlist retrieval        │ │  • YouTube playlist creation      │
-│  • Conversion job creation        │ │  • Video search API               │
-│  • Job status tracking            │ │  • Session linking                │
-│                                   │ │                                   │
-│  Port: 8080                       │ │  Port: 8081                       │
-└───────────────────────────────────┘ └───────────────────────────────────┘
-                    │                                   │
-                    └─────────────────┬─────────────────┘
-                                      │
-                                      ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                                  DATA                                       │
-│  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │                           Redis 7                                    │   │
-│  │  • Session storage (Spotify + YouTube tokens)                        │   │
-│  │  • Job queue (conversion requests)                                   │   │
-│  │  • Real-time status updates                                          │   │
-│  └─────────────────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                      │
-                                      │ Queue polling
-                                      ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                                WORKER                                       │
-│  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │                    Conversion Worker (Go 1.24)                       │   │
-│  │  • Consumes jobs from Redis queue                                    │   │
-│  │  • Fetches Spotify tracks via API                                    │   │
-│  │  • Matches tracks to YouTube videos (concurrent)                     │   │
-│  │  • Creates YouTube playlist with matched videos                      │   │
-│  │  • Persists conversion history to PostgreSQL                         │   │
-│  └─────────────────────────────────────────────────────────────────────┘   │
-│                                      │                                      │
-│                                      ▼                                      │
-│  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │                        PostgreSQL 16                                 │   │
-│  │  • Conversion history                                                │   │
-│  │  • Match logs per track                                              │   │
-│  └─────────────────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
 
----
 
 ## Service Details
 
